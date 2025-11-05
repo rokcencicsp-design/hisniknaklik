@@ -1,245 +1,52 @@
-<!doctype html>
-<html lang="sl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HišnikNaKlik — Hitra prijava napake</title>
-  <meta name="description" content="HišnikNaKlik: enostavna prijava napake in hiter odziv. Opišite težavo, mi pa vas pokličemo v najkrajšem času." />
-  <meta name="theme-color" content="#e8eef7" />
-  <style>
-    :root {
-      --bg1: #f4f7fb;
-      --bg2: #eef3fb;
-      --brand: #3b82f6;
-      --brand-weak: #93c5fd;
-      --text: #0b1220;
-      --muted: #667085;
-      --surface: #ffffff;
-      --border: #e5e7eb;
-      --ok: #1a7f37;
-      --err: #b42318;
-      --radius: 18px;
-      --shadow: 0 12px 36px rgba(15, 23, 42, .08);
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: var(--bg1);
-      color: var(--text);
-      line-height: 1.65;
-      letter-spacing: 0.2px;
-    }
+function doPost(e) {
+  var p = e.parameter || {};
+  var name    = (p.name || "").trim();
+  var email   = (p.email || "").trim();
+  var phone   = (p.phone || "").trim();
+  var message = (p.message || "").trim();
 
-    .hero-wrap {
-      background:
-        radial-gradient(120% 80% at 0% 0%, rgba(147,197,253,.45), transparent 55%),
-        linear-gradient(180deg, var(--bg2), var(--bg1));
-    }
-    header {
-      max-width: 1220px;
-      margin: 0 auto;
-      padding: 28px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .brand {
-      display:flex;
-      align-items:center;
-      gap:14px;
-      font-weight:800;
-    }
-    .brand .dot {
-      width:12px;
-      height:12px;
-      border-radius:50%;
-      background:var(--brand);
-      box-shadow:0 0 0 8px rgba(59,130,246,.18);
-    }
-    .brand span {
-      font-size:20px;
-      color:#0b1220;
-    }
-    nav a {
-      color:#42526b;
-      text-decoration:none;
-      margin-left:22px;
-      font-weight:600;
-    }
-    nav a:hover {
-      color:#111827;
-    }
+  var OWNER_EMAIL = "info.halohisnik@gmail.com";
 
-    .hero {
-      max-width: 1220px;
-      margin: 0 auto;
-      padding: 46px 24px 72px;
-      display:grid;
-      gap:34px;
-    }
-    @media (min-width: 1000px) {
-      .hero {
-        grid-template-columns: 1.15fr .85fr;
-        align-items: center;
-      }
-    }
-    .hero h1 {
-      font-size: clamp(32px, 6.2vw, 56px);
-      line-height:1.08;
-      margin: 0 0 14px;
-      color:#0b1220;
-    }
-    .hero p.lead {
-      margin: 0 0 18px;
-      color:#475569;
-      font-size: clamp(16px, 2.1vw, 19px);
-    }
-    .cta {
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-      margin-top: 8px;
-    }
-    .btn {
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:14px 18px;
-      border-radius:14px;
-      text-decoration:none;
-      font-weight:700;
-    }
-    .btn-primary {
-      background:#0b1220;
-      color:#fff;
-      box-shadow: 0 12px 24px rgba(2,6,23,.12);
-    }
-    .btn-outline {
-      outline:2px solid rgba(2,6,23,.15);
-      color:#0b1220;
-      background:#fff;
-    }
+  // 1) Mail tebi
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    replyTo: email || OWNER_EMAIL,
+    subject: "Nova prijava — HišnikNaKlik",
+    htmlBody:
+      "<b>Ime:</b> " + safe(name) + "<br>" +
+      "<b>E-pošta:</b> " + safe(email) + "<br>" +
+      "<b>Telefon:</b> " + safe(phone) + "<br>" +
+      "<b>Opis:</b><br>" + safe(message).replace(/\n/g, "<br>") + "<br><br>" +
+      "<i>Čas:</i> " + Utilities.formatDate(new Date(), "Europe/Ljubljana", "dd.MM.yyyy HH:mm")
+  });
 
-    .container { max-width: 1220px; margin: 0 auto; padding: 0 24px; }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-
-    .form-card { padding: 22px; position: relative; overflow: hidden; }
-    form label { display:block; margin: 12px 0 6px; font-weight: 700; color:#0b1220; }
-    .hint { margin-top: 4px; color: var(--muted); font-size: 13px; }
-    input, textarea, select {
-      width: 100%;
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      font-size: 16px;
-      background: var(--surface);
-      color: var(--text);
-    }
-    button[type="submit"]{
-      margin-top: 14px;
-      padding: 14px 18px;
-      border: 0;
-      border-radius: 14px;
-      cursor: pointer;
-      background: var(--brand);
-      color: #fff;
-      font-weight: 800;
-      letter-spacing: .2px;
-      box-shadow: 0 14px 28px rgba(59,130,246,.25);
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-    }
-    .spinner{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .8s linear infinite;display:none}
-    .check{display:none;font-size:18px;}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    form.loading .spinner{display:inline-block}
-    form.loading .btn-label{opacity:.8}
-    form.loading .progress{display:block}
-    form.success .spinner{display:none}
-    form.success .check{display:inline-block}
-    .notice { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 1.2em; }
-    .success { color: var(--ok); }
-    .error { color: var(--err); }
-
-    footer { margin: 44px 0 64px; text-align:center; color:var(--muted); font-size:14.5px; }
-  </style>
-</head>
-
-<body>
-  <div class="hero-wrap">
-    <header>
-      <div class="brand"><span class="dot"></span><span>HišnikNaKlik</span></div>
-    </header>
-
-    <section class="hero">
-      <div>
-        <h1>Opišite težavo.<br>Mi uredimo — hitro in jasno.</h1>
-        <p class="lead">Minimalistična prijava napake za dom in pisarno. Brez registracije, brez aplikacij. Le hiter odziv in jasen dogovor.</p>
-      </div>
-
-      <aside class="card form-card" id="naroci">
-        <form id="hh-form" method="POST" novalidate>
-          <label for="name">Ime in priimek</label>
-          <input id="name" name="name" placeholder="npr. Ana Novak" required />
-
-          <label for="email">E-pošta</label>
-          <input id="email" type="email" name="email" placeholder="npr. ana.novak@example.com" required />
-
-          <label for="phone">Telefon</label>
-          <input id="phone" name="phone" placeholder="npr. 040 661 161" />
-
-          <label for="message">Opis težave</label>
-          <textarea id="message" name="message" rows="5" placeholder="Kratek opis težave in lokacija" required></textarea>
-
-          <button type="submit">
-            <span class="btn-label">Pošlji prijavo</span>
-            <span class="spinner"></span>
-            <span class="check">✔</span>
-          </button>
-          <div class="notice" id="notice"></div>
-        </form>
-      </aside>
-    </section>
-  </div>
-
-  <footer>
-    © <span id="y"></span> HišnikNaKlik • Ljubljana in okolica
-  </footer>
-
-  <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
-
-    const FORM_URL = "https://script.google.com/macros/s/AKfycbzfyX_Cl07XyojI6LoBiWn0j99zz--Ga4iu8KYfgAnDD1buoNYGKUFHktHj3i3CZxQ/exec";
-    const form = document.getElementById('hh-form');
-    const notice = document.getElementById('notice');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      notice.textContent = "Pošiljam…";
-      form.classList.add("loading");
-
-      const fd = new FormData(form);
-      try {
-        await fetch(FORM_URL, { method: "POST", body: fd, mode: "no-cors" });
-        form.reset();
-        form.classList.remove("loading");
-        form.classList.add("success");
-        notice.textContent = "Hvala! Prijava je bila uspešno poslana.";
-      } catch (err) {
-        console.error(err);
-        form.classList.remove("loading");
-        notice.textContent = "Napaka pri pošiljanju. Poskusite znova ali pišite na info.halohisnik@gmail.com.";
-      }
+  // 2) Auto-reply uporabniku
+  if (email) {
+    MailApp.sendEmail({
+      to: email,
+      subject: "Prejeli smo vašo prijavo — HišnikNaKlik",
+      htmlBody:
+        "Pozdravljeni" + (name ? " " + safe(name) : "") + ",<br><br>" +
+        "Hvala za prijavo! Vaše sporočilo smo prejeli. " +
+        "Oglasimo se vam v najkrajšem času in se dogovorimo za termin ter okvirni strošek.<br><br>" +
+        "<b>Vaše sporočilo:</b><br>" + safe(message).replace(/\n/g, "<br>") + "<br><br>" +
+        "Lep pozdrav,<br>HišnikNaKlik<br>" +
+        "📞 040 661 161 &nbsp;•&nbsp; ✉️ info.halohisnik@gmail.com"
     });
-  </script>
-</body>
-</html>
+  }
+
+  // CORS (da lahko kasneje odstraniš 'no-cors' v fetchu)
+  return ContentService.createTextOutput(JSON.stringify({ok:true}))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function doGet() {
+  return ContentService.createTextOutput("OK")
+    .setHeader("Access-Control-Allow-Origin", "*");
+}
+
+function safe(s){ return String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
