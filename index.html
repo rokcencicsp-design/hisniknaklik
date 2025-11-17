@@ -27,6 +27,9 @@
     .box{padding:20px;border:1px solid var(--border);border-radius:16px;background:#fff}
     .muted{color:var(--muted)}
     footer{text-align:center;color:var(--muted);font-size:14.5px;margin:44px 0 64px}
+    /* badge */
+    .badge{display:inline-flex;align-items:center;gap:8px;margin:10px 0 18px;background:#0b1220;color:#fff;border-radius:999px;padding:6px 12px;font-weight:700;box-shadow:0 6px 18px rgba(2,6,23,.15)}
+    .badge small{opacity:.85;font-weight:600}
     /* FORM */
     .form-card{padding:22px;position:relative;overflow:hidden}
     label{display:block;margin:12px 0 6px;font-weight:700}
@@ -51,6 +54,7 @@
       <section class="hero">
         <div>
           <h1 class="kec">Prijaviš. Pokličemo. Uredimo.</h1>
+          <div id="review-badge" class="badge" style="display:none">⭐ 5.0/5 <small>(na podlagi 0 ocen)</small></div>
           <p class="lead">Hišni popravki, elektrika in montaže v Ljubljani in okolici. Prijavite napako, še isti dan vas kontaktiramo in se jasno dogovorimo za termin ter strošek.</p>
 
           <div class="grid-3">
@@ -95,9 +99,17 @@
       <h2>Kaj delamo</h2>
       <div class="grid-3">
         <div class="box"><strong>⚡ Električne inštalacije</strong><p class="muted">Menjava stikal, vtičnic, svetil, varovalk in manjša popravila napeljav.</p></div>
-        <div class="box"><strong>🧰 Manjša popravila</strong><p class="muted">Omarice, pulti, tečaji, rolete, tesnila, pipe, vrata, pohištvo.</p></div>
-        <div class="box"><strong>🪜 Montaže in prilagoditve</strong><p class="muted">TV nosilci, police, svetila, pametne naprave, senzorji, tesnila.</p></div>
+        <div class="box"><strong>🧰 Manjša popravila</strong><p class="muted">Omarice, vrata, tečaji, rolete, pipe, tesnila, pohištvo.</p></div>
+        <div class="box"><strong>🪜 Montaže</strong><p class="muted">TV nosilci, police, luči, senzorji, pametne naprave.</p></div>
       </div>
+    </div>
+  </section>
+
+  <section id="mnenja" class="section">
+    <div class="container">
+      <h2>Mnenja strank</h2>
+      <div id="reviews-list" class="grid-3"></div>
+      <p class="muted" id="reviews-empty" style="display:none;">Še nimamo zbranih ocen. Vaše mnenje nam bo pomagalo začeti! 🙏</p>
     </div>
   </section>
 
@@ -114,38 +126,26 @@
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Apps Script endpoint (po potrebi zamenjaj z novo /exec povezavo)
-    const FORM_URL = "https://script.google.com/macros/s/AKfycby-YIcah-CqYB_odtn2TElNSJi_HBkgyoodFpT-VSSimPMH2YiRqA4POAbcRh_U9F-P/exec";
+    // ===== KONSTANTE =====
+    const FORM_URL = "https://script.google.com/macros/s/AKfycbzfyX_Cl07XyojI6LoBiWn0j99zz--Ga4iu8KYfgAnDD1buoNYGKUFHktHj3i3CZxQ/exec";
 
+    // CSV feed z ocenami
+    const REVIEWS_CSV_URL = "https://docs.google.com/spreadsheets/d/1VVv1ae77FwQ73WwW9Dmp7Zxp0GSc6AnZD03cKAL74Yo/export?format=csv&gid=1882539150";
+
+    // ===== OBRAZEC =====
     const form = document.getElementById('hh-form');
     const notice = document.getElementById('notice');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const name = form.name.value.trim();
-      const email = form.email.value.trim();
-      const message = form.message.value.trim();
-      if (!name || !email || !message) {
-        notice.textContent = "Prosimo, izpolnite obvezna polja (Ime, E-pošta, Opis).";
-        notice.className = "notice error";
-        return;
-      }
-
       notice.textContent = "Pošiljam…";
       notice.className = "notice";
       form.classList.add("loading");
 
       try {
         const fd = new FormData(form);
-        // Deluje tudi, če Apps Script nima CORS glav (opaque odgovor).
         await fetch(FORM_URL, { method: "POST", body: fd, mode: "no-cors" });
-
-        form.reset();
-        form.classList.remove("loading");
-        form.classList.add("success");
-        window.location.href = "hvala.html";
-        notice.className = "notice success";
+        window.location.href = "Hvala.html";   // pomembno: velika začetnica H
       } catch (err) {
         console.error(err);
         form.classList.remove("loading");
@@ -153,6 +153,87 @@
         notice.className = "notice error";
       }
     });
+
+    // ===== CSV PARSER =====
+    function parseCSV(str){
+      const out=[], row=[]; let cur="", inQ=false;
+      for(let i=0;i<str.length;i++){
+        const c=str[i], n=str[i+1];
+        if(inQ){
+          if(c=='"'&&n=='"'){cur+='"';i++;}
+          else if(c=='"'){inQ=false;}
+          else{cur+=c;}
+        } else {
+          if(c=='"'){inQ=true;}
+          else if(c==','){ row.push(cur); cur=""; }
+          else if(c=='\n'){ row.push(cur); out.push(row.splice(0)); cur=""; }
+          else cur+=c;
+        }
+      }
+      if(cur!==""){ row.push(cur); out.push(row); }
+      return out;
+    }
+
+    function stars(n){ const x=Math.max(1,Math.min(5,Number(n)||0)); return '★'.repeat(x)+'☆'.repeat(5-x); }
+
+    async function loadReviews(){
+      if(!REVIEWS_CSV_URL) return;
+
+      const list = document.getElementById('reviews-list');
+      const empty = document.getElementById('reviews-empty');
+      const badge = document.getElementById('review-badge');
+
+      try{
+        const res = await fetch(REVIEWS_CSV_URL, { cache:'no-store' });
+        const txt = await res.text();
+        const rows = parseCSV(txt);
+
+        if(!rows || rows.length < 2){ empty.style.display='block'; return; }
+
+        const header = rows[0].map(h => h.trim().toLowerCase());
+        const idx = {
+          time: header.findIndex(h => h.includes('časovni') || h.includes('timestamp')),
+          rating: header.findIndex(h => h.includes('ocen') || h.includes('iskus') || h.includes('izkušnjo')),
+          like: header.findIndex(h => h.includes('vše') || h.includes('najbolj')),
+          improve: header.findIndex(h => h.includes('izbolj')),
+        };
+
+        const body = rows.slice(1).filter(r => r.some(Boolean));
+        if(idx.time>=0){
+          body.sort((a,b) => new Date(b[idx.time]) - new Date(a[idx.time]));
+        }
+
+        // Badge (povprečje)
+        const nums = body.map(r => Number(r[idx.rating])).filter(n => !isNaN(n) && n>0);
+        if(nums.length){
+          const avg = (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1);
+          badge.style.display = 'inline-flex';
+          badge.innerHTML = `⭐ ${avg}/5 <small>(na podlagi ${nums.length} ocen)</small>`;
+        }
+
+        // Zadnjih 5 ocen
+        const last5 = body.slice(0,5);
+        if(!last5.length){ empty.style.display='block'; return; }
+
+        last5.forEach(r => {
+          const card = document.createElement('div');
+          card.className = 'box';
+          card.innerHTML = `
+            <div style="font-weight:700;margin-bottom:6px;">${stars(r[idx.rating]||5)}</div>
+            ${idx.like>=0 ? `<div style="margin:6px 0;"><em>${r[idx.like]||""}</em></div>` : ""}
+            ${idx.improve>=0 ? `<div class="muted" style="font-size:14px">Predlog: ${r[idx.improve]||""}</div>` : ""}
+            ${idx.time>=0 ? `<div class="muted" style="font-size:12px;margin-top:6px;">${new Date(r[idx.time]).toLocaleDateString('sl-SI')}</div>` : ""}
+          `;
+          list.appendChild(card);
+        });
+
+      } catch(err){
+        console.error(err);
+        empty.style.display='block';
+      }
+    }
+
+    loadReviews();
   </script>
 </body>
 </html>
